@@ -11,3 +11,5 @@ The mass spectrometry raw files and associated processing output files underlyin
 
 ## Installation
 To reproduce the results presented in the paper, run the scripts in an R environment.
+
+"Evidence files" are used as input for the "Data_preparation_and_Alignment" script, which outputs secondary files for the creation of figures.
