@@ -134,14 +134,12 @@ tTest = t.test(my.data$CV_CCS, my.data$CV_CCS_cor) %>%
   adjust_pvalue(method = 'BH') %>%
   add_significance()
 
-
-tmp = my.data %>%  select(c("CV_CCS", "CV_CCS_cor")) %>% stack()
-
-stat.test = tmp %>%
-  t_test(values ~ ind) %>%
-  adjust_pvalue(method = "BH") %>%
+Wilcox_test = wilcox.test(my.data$CV_CCS, my.data$CV_CCS_cor) %>%
+  adjust_pvalue(method = 'BH') %>%
   add_significance()
 
+
+tmp = my.data %>%  select(c("CV_CCS", "CV_CCS_cor")) %>% stack()
 
 med_global = median(my.data$CV_CCS_cor)
 mean_global = mean(my.data$CV_CCS_cor)
@@ -153,8 +151,6 @@ ggplot(tmp, aes(x = ind, y = values)) + geom_boxplot() +
   xlab('') + 
   ylab("CV (%)") +
   theme(text = element_text(size=14, color = "black"), axis.text = element_text(colour = "black", size = 12)) 
-
-
 
 ##### Fig.2B_CCS and RT Coefficient of variation ####
 
