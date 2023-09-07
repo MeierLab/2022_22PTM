@@ -81,7 +81,6 @@ x = delta_list %>% select(-c(mod, order, ID, Modifications_full)) %>% filter(Mod
 write.table(x, file='Matched_peptides.tsv', quote=FALSE, row.names = FALSE, col.names = TRUE, sep='\t')
 
 
-
 ##### Calculate residuals of linear regression (mod/unmod, CCS/mz) ####
 
 residuals_list_CCS = list()
@@ -383,6 +382,8 @@ for (i in 1:length(residuals_list_CCS)) {
   
 }
 
+
+
 pdf(paste("Fig.5.Sup_dCCS_vs_residuals_C3_black.pdf", sep=''), width = 3, height = 2.5)
 for (i in 1:(length(plot_list2))) {
   print(plot_list2[[i]])
@@ -477,14 +478,14 @@ pdf("Fig5_LinePlot_dCCS_C3.pdf", width = 8, height = 3.5)
 print(plot)
 dev.off()
 
-#### Fig.5B Heatmap Butyryl  ####
+#### Fig.5B Heatmap Succinyl  ####
 
 data_position = delta_list
 split = split(data_position, data_position$Charge)
 
-C2 = split$`2` %>% filter(Modifications == "Butyryl")
+C2 = split$`2` %>% filter(Modifications == "Succinyl")
 C2$Modifications_full = paste(C2$Modifications_full, " C", C2$Charge, sep = "")
-C3 = split$`3` %>% filter(Modifications == "Butyryl")
+C3 = split$`3` %>% filter(Modifications == "Succinyl")
 C3$Modifications_full = paste(C3$Modifications_full, " C", C3$Charge, sep = "")
 
 data_position = rbind(C2, C3)
@@ -518,7 +519,7 @@ row.names(merged2) = tmp
 
 p = heatmaply(
   merged2,
-  file = "Fig.5B_heatmap_Butyryl_C2_C3.pdf",
+  file = "Fig.5B_heatmap_Succinyl_C2_C3.pdf",
   scale_fill_gradient_fun = scale_fill_gradient2(
     low = "#006AF5", 
     high = "#E00724"),
@@ -600,3 +601,136 @@ R2_C3_unmod = tmp$adj.r.squared
 mod = lm(y$CCS_mod~y$m.z_mod)
 tmp = summary(mod)
 R2_C3_mod = tmp$adj.r.squared
+
+#### Do modifications "normalize" the data? #####
+
+#Charge 3
+
+C2 = delta_list %>% filter(Charge == 3)
+split = split(C2, C2$Modifications_full)
+
+Function_unmod = function(x){ Coefficients_unmod[2] *log(x)+ Coefficients_unmod[1] }
+Function_mod = function(x){ Coefficients_mod[2] *log(x)+ Coefficients_mod[1] }
+
+list = list()
+R2_list_C3 = list()
+R2_change_list_C3 = list()
+
+for (i in 1:length(split)) {
+  
+  name = names(split) [[i]]
+  a = split [[i]]
+  
+  Regr_log_unmod = lm(a$CCS_cor_unmod~log(a$m.z_unmod))
+  #Regr_log_unmod = lm(a$CCS_cor_unmod~a$m.z_unmod)
+  Coefficients_unmod = Regr_log_unmod$coefficients
+  R2_unmod = summary(Regr_log_unmod)$adj.r.squared
+  
+  Regr_log_mod = lm(a$CCS_cor_mod~log(a$m.z_mod))
+  #Regr_log_mod = lm(a$CCS_cor_mod~a$m.z_mod)
+  Coefficients_mod = Regr_log_mod$coefficients
+  R2_mod = summary(Regr_log_mod)$adj.r.squared
+  
+  a$Res_unmod = a$CCS_cor_unmod - Function_unmod(a$m.z_unmod)
+  a$Res_mod = a$CCS_cor_mod - Function_mod(a$m.z_mod)
+  
+  list[[name]] = a
+  R2_list_C3 [[name]] = c(R2_unmod,R2_mod, a$order[[2]])
+  
+  R2_change_list_C3 [[name]] = c(R2_mod - R2_unmod, a$order[[2]], "C3")
+  
+}
+
+# plot violin plot of residues
+tmp2 = rbindlist(list)
+
+tmp = rbindlist(list) %>% select(c(Sequence, Modifications_full, Res_mod, Res_unmod, order)) %>%
+  pivot_longer(., cols = c(Res_mod,Res_unmod), names_to = "Var", values_to = "Val") %>% 
+  arrange(desc(order)) %>%
+  mutate(Modifications_full=fct_reorder(Modifications_full,order)) %>%
+  filter(!grepl("Unmodified", Modifications_full))
+
+plot = ggplot(tmp, aes(x = Modifications_full, y = Val, fill = fct_rev(Var))) +
+  theme_classic() +
+  geom_hline(yintercept = 0, size = 0.3, color = "grey") + 
+  geom_boxplot(size = 0.3, outlier.size = 0.3, show.legend = FALSE) + 
+  scale_fill_manual(values  = c("white", "grey")) +
+  xlab("") + 
+  ylab(expression("Residual (" ~ ring(A) ^ 2 * ")")) +
+  scale_x_discrete(guide = guide_axis(angle = 40)) +
+  theme(text = element_text(size=14, color = "black"), axis.text = element_text(colour = "black", size = 12))
+
+setwd(WD_Graphs)
+
+pdf(paste("Residuals_mod_vs_unmod_boxplot_C3.pdf", sep=''), width = 8, height = 3.5)
+print(plot)
+dev.off()
+
+
+
+#Charge 2
+C2 = delta_list %>% filter(Charge == 2)
+split = split(C2, C2$Modifications_full)
+
+list = list()
+R2_list_C2 = list()
+R2_change_list_C2 = list()
+
+for (i in 1:length(split)) {
+  
+  name = names(split) [[i]]
+  a = split [[i]]
+  
+  Regr_log_unmod = lm(a$CCS_cor_unmod~log(a$m.z_unmod))
+  #Regr_log_unmod = lm(a$CCS_cor_unmod~a$m.z_unmod)
+  Coefficients_unmod = Regr_log_unmod$coefficients
+  R2_unmod = summary(Regr_log_unmod)$adj.r.squared
+  
+  Regr_log_mod = lm(a$CCS_cor_mod~log(a$m.z_mod))
+  #Regr_log_mod = lm(a$CCS_cor_mod~a$m.z_mod)
+  Coefficients_mod = Regr_log_mod$coefficients
+  R2_mod = summary(Regr_log_mod)$adj.r.squared
+  
+  a$Res_unmod = a$CCS_cor_unmod - Function_unmod(a$m.z_unmod)
+  a$Res_mod = a$CCS_cor_mod - Function_mod(a$m.z_mod)
+  
+  list[[name]] = a
+  R2_list_C2 [[name]] = c(R2_unmod,R2_mod, a$order[[2]])
+  
+  R2_change_list_C2 [[name]] = c(R2_mod - R2_unmod, a$order[[2]], "C2")
+  
+}
+
+x = R2_change_list_C3 %>% as_tibble() %>% t() %>% as.data.frame()
+x$Modifications_full = row.names(y)
+
+y = R2_change_list_C2 %>% as_tibble() %>% t() %>% as.data.frame()
+y$Modifications_full = row.names(y)
+
+
+tmp2 = rbindlist(list)
+
+tmp = rbindlist(list) %>% select(c(Sequence, Modifications_full, Res_mod, Res_unmod, order)) %>%
+  pivot_longer(., cols = c(Res_mod,Res_unmod), names_to = "Var", values_to = "Val") %>% 
+  arrange(desc(order)) %>%
+  mutate(Modifications_full=fct_reorder(Modifications_full,order)) %>%
+  filter(!grepl("Unmodified", Modifications_full))
+
+plot = ggplot(tmp, aes(x = Modifications_full, y = Val, fill = fct_rev(Var))) +
+  theme_classic() +
+  geom_hline(yintercept = 0, size = 0.3, color = "grey") + 
+  geom_boxplot(size = 0.3, outlier.size = 0.3, show.legend = FALSE) + 
+  scale_fill_manual(values  = c("white", "grey")) +
+  xlab("") + 
+  ylab(expression("Residual (" ~ ring(A) ^ 2 * ")")) +
+  scale_x_discrete(guide = guide_axis(angle = 40)) +
+  theme(text = element_text(size=14, color = "black"), axis.text = element_text(colour = "black", size = 12))
+
+setwd(WD_Graphs)
+
+pdf(paste("Residuals_mod_vs_unmod_boxplot_C2.pdf", sep=''), width = 8, height = 3.5)
+print(plot)
+dev.off()
+
+
+

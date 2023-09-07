@@ -7,7 +7,7 @@ library(VennDiagram)
 library(ggrepel)
 
 #Folder of MaxQuant evidence files
-WD_Evidence = 'C:/Users/Andre/Data/20220411_21PTM_2/evidence_oxidation'
+WD_Evidence = 'C:/Users/Andre/Data/20220411_21PTM_2/evidences'
 
 WD_Graphs = 'C:/Users/Andre/OneDrive/Desktop/Paper_plots'
 
@@ -27,7 +27,7 @@ Ordering = c(3, 11, 5, 9, 14, 2, 8, 10, 6, 13, 4, 7, 15, 12, 1, 22, 21, 20, 19, 
 setwd(WD_Files)
 
 # Read R objects from working directory
-Cor_fac_CCS_list = list.files(pattern = "Cor_fac_CCS_list") %>%
+Cor_fac_K0_list = list.files(pattern = "Cor_fac_K0_list") %>%
   map(readRDS) %>% flatten()
 Cor_fac_RT_list = list.files(pattern = "Cor_fac_RT_list") %>%
   map(readRDS) %>% flatten()
@@ -121,7 +121,7 @@ for (i in 1:length(my.data.clean)) {
   
   data = data %>% group_by(Sequence) %>% top_n(1, Intensity)
   
-  data = select(data, c(Sequence, Charge, Intensity, CCS, m.z, Raw.file, Retention.time))
+  data = select(data, c(Sequence, Charge, Intensity, CCS, m.z, Raw.file, Retention.time, X1.K0))
   
   data$Modifications_short = paste("(", Residue [[i]], ") ", Modifications_short [[i]], sep = "")
   data$Residue = Residue [[i]]
@@ -179,10 +179,17 @@ CCS.correction.function = function(a){
       
       #Get correction factor for specific ID
       
-      Cor_fac_CCS = Cor_fac_CCS_list [[name2]]
+      Cor_fac_K0 = Cor_fac_K0_list [[name2]]
       Cor_fac_RT = Cor_fac_RT_list [[name2]]
       
-      x$CCS_cor = x$CCS - Cor_fac_CCS
+      x$K0_cor = x$X1.K0 - Cor_fac_K0
+      
+      Charge = x$Charge
+      Mass = x$m.z * Charge
+      Red_mass = sqrt(1/305*(28+(Mass + Charge * 1.00727647))/(28*(Mass + Charge * 1.00727647)))
+      
+      x$CCS_cor = 18500 * Charge *x$K0_cor * Red_mass
+      
       x$RT_cor = x$Retention.time - Cor_fac_RT
       
       data_corrected [[name2]] = x
@@ -262,7 +269,7 @@ for (i in 1:length(data_split)) {
 
 setwd(WD_Graphs)
 
-pdf(paste("Fig3_Charge_distribution_Modification.pdf", sep=''), width = 2.5, height = 2.5)
+pdf(paste("Fig3_Charge_distribution_Modification.pdf", sep=''), width = 2.75, height = 2.5)
 for (i in 1:(length(plot_list))) {
   print(plot_list[[i]])
 }
